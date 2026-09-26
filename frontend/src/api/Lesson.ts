@@ -1,21 +1,25 @@
-import { mockData } from "../mocks/seedData";
+import { idb, STORE_NAMES } from "../utils/db";
+import { AppError } from "../utils/errors";
+import { ERROR_CODES } from "../constants/errorCodes";
+import { LESSON_LOG_TEMPLATES } from "../constants/logTemplates";
+import { logger } from "../utils/logger";
 import type { Lesson } from "../types/Lesson";
 
-const endpoint = "/api/lesson";
-
 export async function listLesson(): Promise<Lesson[]> {
-  if (typeof fetch !== "undefined" && endpoint.startsWith("/api") && false) {
-    try {
-      const res = await fetch(endpoint);
-      if (res.ok) return await res.json();
-    } catch {
-      // Local mock fallback keeps the UI available during offline review.
-    }
+  try {
+    return await idb.list<Lesson>(STORE_NAMES.lessons);
+  } catch (error) {
+    throw new AppError(ERROR_CODES.STORE_UNAVAILABLE, "api", "读取课程失败", error);
   }
-  return [...(mockData.lesson as unknown as Lesson[])];
 }
 
-export async function saveLesson(payload: Lesson) {
-  console.info("save Lesson", payload);
+export async function saveLesson(payload: Lesson): Promise<Lesson> {
+  await idb.put(STORE_NAMES.lessons, payload);
+  logger.info("api.Lesson", LESSON_LOG_TEMPLATES.update({ id: payload.id, field: "symbol_ids", next: payload.symbol_ids.length }));
   return payload;
+}
+
+export async function bulkPutLesson(rows: Lesson[]): Promise<void> {
+  await idb.putMany(STORE_NAMES.lessons, rows);
+  logger.info("api.Lesson", LESSON_LOG_TEMPLATES.import({ count: rows.length }));
 }
