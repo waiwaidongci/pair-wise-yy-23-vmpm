@@ -1,12 +1,12 @@
 import type { Lesson } from "../types/Lesson";
 
 export const createDefaultLesson = (overrides: Partial<Lesson> = {}): Lesson => ({
-  id: 1 as never,
-  title: "title 1" as never,
-  symbol_ids: [1,2] as number[],
-  stage: "stage 1" as never,
-  estimated_minutes: "estimated minutes 1" as never,
-  unlock_rule: "unlock rule 1" as never,
+  id: 0,
+  title: "",
+  symbol_ids: [],
+  stage: "入门",
+  estimated_minutes: 10,
+  unlock_rule: "开放注册即可学习",
   ...overrides
 });
 

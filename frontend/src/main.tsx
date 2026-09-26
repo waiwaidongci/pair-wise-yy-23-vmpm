@@ -1,54 +1,65 @@
-import React, { useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { createTheme, CssBaseline, ThemeProvider } from "@mui/material";
 import { routes } from "./router/routes";
-import { mockData } from "./mocks/seedData";
-import { StatusBadge } from "./components/common/StatusBadge";
-import { StatCard } from "./components/common/StatCard";
+import { useHashRoute } from "./hooks/useHashRoute";
+import { LearnPage } from "./pages/LearnPage";
+import { PracticePage } from "./pages/PracticePage";
+import { MistakesPage } from "./pages/MistakesPage";
+import { ProgressPage } from "./pages/ProgressPage";
+import { usePracticeStore } from "./stores/PracticeDraftStore";
 import "./styles.css";
 
-function Page({ name }: { name: string }) {
-  const entities = Object.entries(mockData);
-  const total = useMemo(() => entities.reduce((sum, [, rows]) => sum + rows.length, 0), [entities]);
-  return <main className="page">
-    <section className="page-head">
-      <div>
-        <p className="eyebrow">braille-trainer</p>
-        <h1>{name}</h1>
+// MUI 主题：主色沿用训练器墨绿；业务样式仍由 styles.css 提供。
+const theme = createTheme({
+  palette: { primary: { main: "#2f5d43" }, secondary: { main: "#d39b46" } },
+  typography: { fontFamily: '"Aptos","PingFang SC",system-ui,sans-serif' }
+});
+
+function AppShell() {
+  const fallback = routes[0]?.route ?? "/learn";
+  const { route, navigate } = useHashRoute(fallback);
+  const current = routes.find((item) => item.route === route) ?? routes[0];
+  const practice = usePracticeStore();
+
+  const goPracticeForLesson = (lessonId: number) => {
+    navigate("/practice");
+    // 学习页“去练习这节课”：默认看形辨字，由练习页继续当前草稿或开新组。
+    void practice.start(lessonId, "CELL_TO_TEXT");
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <div className="shell">
+        <aside>
+          <div className="brand">盲文点字学习训练器</div>
+          <nav>
+            {routes.map((item) => (
+              <button key={item.route} className={current?.route === item.route ? "active" : ""} onClick={() => navigate(item.route)}>
+                {item.name}
+              </button>
+            ))}
+          </nav>
+          {practice.draft && (
+            <div className="draft-hint">
+              <span className="dot" />
+              有一组未完成练习，可随时回到练习模式续答
+            </div>
+          )}
+        </aside>
+        <main className="page">
+          {current?.route === "/learn" && <LearnPage onPracticeLesson={goPracticeForLesson} />}
+          {current?.route === "/practice" && <PracticePage />}
+          {current?.route === "/mistakes" && <MistakesPage onNavigatePractice={() => navigate("/practice")} />}
+          {current?.route === "/progress" && <ProgressPage />}
+        </main>
       </div>
-      <StatusBadge value="LOCAL_DATA" />
-    </section>
-    <section className="metrics">
-      <StatCard label="核心模型" value={entities.length} />
-      <StatCard label="本地记录" value={total} />
-      <StatCard label="共享枚举" value={3} />
-    </section>
-    <section className="workbench">
-      <div className="panel wide">
-        <h2>业务数据</h2>
-        <div className="table">
-          {entities.map(([key, rows]) => <article key={key} className="row">
-            <strong>{key}</strong><span>{rows.length} 条</span><StatusBadge value={Object.values(rows[0] ?? {})[1] as string ?? "READY"} />
-          </article>)}
-        </div>
-      </div>
-      <div className="panel">
-        <h2>联动检查</h2>
-        <p>页面、store、API、构造器、日志模板和枚举常量均按提示词拆分，适合评审跨文件修改能力。</p>
-      </div>
-    </section>
-  </main>;
+    </ThemeProvider>
+  );
 }
 
 function App() {
-  const [active, setActive] = useState<string>(routes[0]?.route ?? "/dashboard");
-  const current = routes.find((route) => route.route === active) ?? routes[0];
-  return <div className="shell">
-    <aside>
-      <div className="brand">盲文点字学习训练器</div>
-      <nav>{routes.map((route) => <button key={route.route} className={active === route.route ? "active" : ""} onClick={() => setActive(route.route)}>{route.name}</button>)}</nav>
-    </aside>
-    <Page name={current?.name ?? "工作台"} />
-  </div>;
+  return <AppShell />;
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
